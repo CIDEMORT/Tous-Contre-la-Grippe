@@ -3,7 +3,6 @@ import { ref } from 'vue'
 import Widget from '@/components/Widget.vue'
 import DialogWidget from '@/components/DialogWidget.vue'
 
-// 🧠 Données widgets
 const widgetCategories = [
   {
     title: 'Géographie',
@@ -12,19 +11,52 @@ const widgetCategories = [
         label: 'Évolution actes de vaccination contre la grippe de 2021 à 2024 par région',
         filters: ['year', 'region'],
       },
+      {
+        label: 'Accesibilité des centres de vaccination (pharmacies uniquement) selon la population',
+        filters: [],
+      },
+      {
+        label: 'Evolution des actes par age de 2021 à 2024 selon les régions',
+        filters: [],
+      },
+      {
+        label: 'Evolution des doses par age de 2021 à 2024 selon les régions',
+        filters: [],
+      },
+      {
+        label: "Repartition du lieu de vaccination selon la tranche d'age",
+        filters: [],
+      }
     ],
   },
   {
-    title: 'Saisonalité',
-    widgets: [],
+    title: 'Saisonnalité',
+    widgets: [
+        {
+            label: 'Analyse de la saisonnalité - Corrélation température/grippe',
+            filters: [],
+        },
+        {
+            label: 'Repartition du taux de grippes par saisonnalité 2011 - 2025',
+            filters: [],
+        }
+    ],
   },
   {
     title: 'Logistique',
-    widgets: [],
+    widgets: [
+        {
+            label: 'Actes/Doses de vaccination par région',
+            filters: ['year', 'region'],
+        },
+        {
+            label: 'Nombre de pharmacie sur une période/campagne de vaccination',
+            filters: ['year', 'region'],
+        }
+    ],
   },
 ]
 
-// ⚙️ États
 const showDialog = ref<boolean>(false)
 const selectedWidget = ref<{
   label: string
@@ -32,11 +64,10 @@ const selectedWidget = ref<{
   title?: string
 } | null>(null)
 
-// 🔘 Ouvrir un widget
 function openWidget(widget: { label: string; filters?: string[] }, categoryTitle: string) {
   selectedWidget.value = {
     ...widget,
-    title: categoryTitle.toLowerCase(), // on ajoute la catégorie au widget sélectionné
+    title: categoryTitle.toLowerCase(),
   }
   showDialog.value = true
 }

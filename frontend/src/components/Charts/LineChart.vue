@@ -7,16 +7,9 @@ import {
 
 ChartJS.register(Title, Tooltip, Legend, LineElement, CategoryScale, LinearScale, PointElement)
 
-const props = defineProps<{ data: any }>()
-
-const options = {
-  responsive: true,
-  plugins: {
-    legend: { position: 'bottom' as const},
-  },
-}
+const props = defineProps<{ data: any; options?: any }>()
 </script>
 
 <template>
-  <Line :data="props.data" :options="options" class="w-full h-[280px]" />
+  <Line :data="props.data" :options="props.options" class="w-full h-[400px]" />
 </template>
