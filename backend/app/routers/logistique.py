@@ -6,7 +6,8 @@ from typing import Optional
 
 from app.models.response_models import (
     ActesDosesRegionResponse,
-    NombrePharmaciesPeriodeResponse
+    NombrePharmaciesPeriodeResponse,
+    ActesDosesRegionResponse
 )
 
 router = APIRouter()
@@ -18,56 +19,48 @@ router = APIRouter()
 @router.get("/actes-doses-region", response_model=ActesDosesRegionResponse)
 async def get_actes_doses_region(
     db: Session = Depends(get_db),
-    region: Optional[str] = Query(None, description="Filtrer par région"),
-    variable_stock: Optional[str] = Query(None, description="Filtrer par variable: actes ou doses")
+    region: Optional[str] = Query(None, description="Filtrer par région")
 ):
     """
-    Actes/Doses de vaccination par région
+    Comparaison actes de vaccination vs doses distribuées par région
     
-    Graphique: Bar chart comparatif
+    Graphique: Barres groupées
     """
-    query = "SELECT * FROM actes_doses_region WHERE 1=1"
+    from app.models.schemas import ActesDosesRegion
+    
+    query = db.query(ActesDosesRegion)
     
     if region:
-        query += f" AND region = '{region}'"
-    if variable_stock:
-        query += f" AND variable_stock = '{variable_stock}'"
+        query = query.filter(ActesDosesRegion.region.like(f"%{region}%"))
     
-    results = db.execute(text(query)).fetchall()
+    results = query.all()
     
     data = []
     for row in results:
         data.append({
-            "region": row[1],
-            "variable_stock": row[2],
-            "valeur": row[3]
+            "region": row.region,
+            "acte_vgp": row.acte_vgp,
+            "doses_j07e1": row.doses_j07e1
         })
     
-    # Regrouper par région
-    regions = list(set([d["region"] for d in data]))
-    
-    # Séparer actes et doses
-    actes_data = [d["valeur"] for d in data if d["variable_stock"] == "actes"]
-    doses_data = [d["valeur"] for d in data if d["variable_stock"] == "doses"]
-    
-    # Format Chart.js (Grouped bar chart)
+    # Format Chart.js (Barres groupées)
     chartjs_format = {
         "type": "bar",
         "data": {
-            "labels": regions,
+            "labels": [d["region"] for d in data],
             "datasets": [
                 {
-                    "label": "Actes",
-                    "data": actes_data,
-                    "backgroundColor": "rgba(255, 99, 132, 0.5)",
-                    "borderColor": "rgba(255, 99, 132, 1)",
+                    "label": "Actes de vaccination",
+                    "data": [d["acte_vgp"] for d in data],
+                    "backgroundColor": "rgba(54, 162, 235, 0.7)",
+                    "borderColor": "rgba(54, 162, 235, 1)",
                     "borderWidth": 1
                 },
                 {
-                    "label": "Doses",
-                    "data": doses_data,
-                    "backgroundColor": "rgba(54, 162, 235, 0.5)",
-                    "borderColor": "rgba(54, 162, 235, 1)",
+                    "label": "Doses distribuées",
+                    "data": [d["doses_j07e1"] for d in data],
+                    "backgroundColor": "rgba(255, 99, 132, 0.7)",
+                    "borderColor": "rgba(255, 99, 132, 1)",
                     "borderWidth": 1
                 }
             ]
@@ -77,23 +70,27 @@ async def get_actes_doses_region(
             "plugins": {
                 "title": {
                     "display": True,
-                    "text": "Actes et Doses de vaccination par région"
+                    "text": "Actes vs Doses par région"
                 },
                 "legend": {
-                    "display": True
+                    "position": "top"
                 }
             },
             "scales": {
                 "y": {
-                    "beginAtZero": True
+                    "beginAtZero": True,
+                    "title": {
+                        "display": True,
+                        "text": "Nombre"
+                    }
                 }
             }
         }
     }
     
     return {
-        "question": "Actes/Doses de vaccination par région",
-        "graphique": "Bar chart",
+        "question": "Comparaison actes de vaccination vs doses distribuées",
+        "graphique": "Barres groupées",
         "data": data,
         "total": len(data),
         "chartjs": chartjs_format

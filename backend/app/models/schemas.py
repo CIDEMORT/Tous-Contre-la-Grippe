@@ -95,15 +95,14 @@ class RepartitionLieuVaccination(Base):
 # ============================================
 
 class ActesDosesRegion(Base):
-    """Actes/Doses de vaccination par région"""
+    """Comparaison actes de vaccination vs doses distribuées par région"""
     __tablename__ = "actes_doses_region"
     
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     region = Column(String(100), index=True)
-    variable_stock = Column(String(100))  # "actes" ou "doses"
-    valeur = Column(Integer)
+    acte_vgp = Column(Integer)  # Nom Python simplifié
+    doses_j07e1 = Column(Integer)  # Nom Python simplifié
     created_at = Column(DateTime, default=datetime.utcnow)
-
 
 class NombrePharmaciesPeriode(Base):
     """Nombre de pharmacie sur une période/campagne de vaccination"""

@@ -101,7 +101,7 @@ class DonneesMeteoResponse(BaseModel):
     data: List[DonneesMeteoData]
     total: int
     chartjs: ChartJSFormat
-    
+
 # ============================================
 # Admin
 # ============================================
@@ -177,12 +177,14 @@ class RepartitionLieuVaccinationResponse(BaseModel):
 
 class ActesDosesRegionData(BaseModel):
     region: str
-    variable_stock: str
-    valeur: int
+    acte_vgp: Optional[int] = None
+    doses_j07e1: Optional[int] = None
 
 class ActesDosesRegionResponse(BaseModel):
     question: str
+    graphique: str
     data: List[ActesDosesRegionData]
+    total: int
     chartjs: ChartJSFormat
 
 class NombrePharmaciesPeriodeData(BaseModel):
