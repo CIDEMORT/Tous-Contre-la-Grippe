@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import API from '@/services/API'
 
 // 📊 Import des graphiques
 import BarChart from '@/components/Charts/BarChart.vue'
@@ -11,80 +12,124 @@ import MultiSelect from 'primevue/multiselect'
 
 const props = defineProps<{
   showDialog: boolean
-  selectedWidget: { label: string } | null
+  selectedWidget: {
+    label: string
+    filters?: string[]
+    title?: string
+  } | null
 }>()
 
-const emit = defineEmits<(
-  e: 'update:showDialog', value: boolean
-) => void>()
+const emit = defineEmits<(e: 'update:showDialog', value: boolean) => void>()
+const handleHide = () => emit('update:showDialog', false)
 
-const handleHide = () => {
-  emit('update:showDialog', false)
-}
+/* -------------------------------
+🧠 États de données
+---------------------------------*/
+const loading = ref(false)
+const apiData = ref<any | null>(null)
 
-/**
- * 🔎 Filtres disponibles
- */
-const availableDates = ref([
-  { label: '2019', value: '2019' },
-  { label: '2020', value: '2020' },
+/* -------------------------------
+🎚️ Filtres (dynamiques)
+---------------------------------*/
+const availableYears = ref([
   { label: '2021', value: '2021' },
   { label: '2022', value: '2022' },
   { label: '2023', value: '2023' },
-  { label: '2024', value: '2024' }
+  { label: '2024', value: '2024' },
 ])
-const selectedDates = ref(['2024'])
+const selectedYears = ref(['2021', '2022', '2023', '2024'])
 
-/**
- * 1️⃣ Correspondance widget → composant graphique
- */
+const availableRegions = ref<{ label: string; value: string }[]>([])
+const selectedRegions = ref<string[]>([])
+
+/* -------------------------------
+🧩 Type de graphique par défaut
+---------------------------------*/
 const chartMap: Record<string, any> = {
-  'Population': BarChart,
-  'Espérance de vie': LineChart,
-  'Taux d’obésité': PieChart,
+  'Évolution actes de vaccination contre la grippe de 2021 à 2024 par région': BarChart,
 }
 
-/**
- * 2️⃣ Détermination du graphique à afficher
- */
+/* -------------------------------
+🎨 Choix du graphique
+---------------------------------*/
 const currentChartComponent = computed(() => {
   if (!props.selectedWidget) return null
   return chartMap[props.selectedWidget.label] || BarChart
 })
 
-/**
- * 3️⃣ Données dynamiques simulées
- */
+/* -------------------------------
+📊 Données filtrées pour Chart.js
+---------------------------------*/
 const chartData = computed(() => {
-  if (!props.selectedWidget) return null
+  if (!apiData.value) return null
+  const chartjsData = apiData.value.chartjs.data
 
-  // Filtrage factice selon les dates sélectionnées (pour l’exemple)
-  const years = selectedDates.value
-  const baseData = [62, 64.3, 67.5, 68].slice(0, years.length)
+  // 1️⃣ Filtrage par années
+  let filteredDatasets = chartjsData.datasets
+  if (props.selectedWidget?.filters?.includes('year')) {
+    filteredDatasets = filteredDatasets.filter((d: any) =>
+      selectedYears.value.includes(d.label)
+    )
+  }
 
-  switch (props.selectedWidget.label) {
-    case 'Population':
-      return {
-        labels: years,
-        datasets: [{ label: 'Millions', data: baseData, backgroundColor: '#A7C7E7' }],
-      }
-    case 'Espérance de vie':
-      return {
-        labels: ['Hommes', 'Femmes'],
-        datasets: [{ label: 'Années', data: [79.5, 85.7], backgroundColor: ['#B5EAD7', '#FFDAC1'] }],
-      }
-    case 'Taux d’obésité':
-      return {
-        labels: ['Hommes', 'Femmes'],
-        datasets: [{ label: '%', data: [15.2, 17.3], backgroundColor: ['#FFB7B2', '#C7CEEA'] }],
-      }
-    default:
-      return {
-        labels: ['A', 'B', 'C', 'D'],
-        datasets: [{ label: 'Valeurs simulées', data: [10, 20, 15, 25], backgroundColor: '#E2F0CB' }],
-      }
+  // 2️⃣ Filtrage par régions
+  let filteredLabels = chartjsData.labels
+  if (props.selectedWidget?.filters?.includes('region') && selectedRegions.value.length > 0) {
+    const regionIndexes = filteredLabels
+      .map((label: string, idx: number) =>
+        selectedRegions.value.includes(label) ? idx : -1
+      )
+      .filter((i: any) => i !== -1)
+
+    filteredLabels = filteredLabels.filter((label: string) =>
+      selectedRegions.value.includes(label)
+    )
+
+    filteredDatasets = filteredDatasets.map((dataset: any) => ({
+      ...dataset,
+      data: dataset.data.filter((_: any, idx: number) => regionIndexes.includes(idx)),
+    }))
+  }
+
+  return {
+    labels: filteredLabels,
+    datasets: filteredDatasets,
   }
 })
+
+/* -------------------------------
+🚀 Chargement dynamique selon le widget
+---------------------------------*/
+async function loadWidgetData() {
+  if (!props.selectedWidget) return
+  loading.value = true
+  apiData.value = null
+
+  try {
+    // Exemple : gestion par titre + label
+    switch (props.selectedWidget.title) {
+      case 'géographie':
+        apiData.value = (await API.geographie.getEvolutionActesRegion()).data
+
+        // Initialise le filtre région
+        availableRegions.value = apiData.value.chartjs.data.labels.map((label: string) => ({
+          label,
+          value: label,
+        }))
+        selectedRegions.value = availableRegions.value.map((r) => r.value)
+        break
+
+      // Tu pourras ajouter ici d'autres "titles" comme "saisonalité" ou "logistique"
+    }
+  } catch (err) {
+    console.error('Erreur API:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+// 🔁 Recharger à chaque changement de widget
+watch(() => props.selectedWidget, loadWidgetData, { immediate: true })
 </script>
 
 <template>
@@ -97,50 +142,64 @@ const chartData = computed(() => {
     :style="{ width: '90%' }"
     class="!bg-white"
   >
-    <!-- Header -->
+    <!-- 🧩 HEADER -->
     <template #header>
-      <div class="flex flex-col w-full gap-3">
-        <h2 class="text-xl font-semibold text-slate-800 text-center">
+      <div class="flex flex-col gap-3 w-full">
+        <h2 class="text-xl font-semibold text-center text-slate-800">
           {{ props.selectedWidget?.label }}
         </h2>
-
-        <!-- 🎚️ Zone de filtres -->
-        <div class="flex items-center gap-4 mt-2 justify-center">
-          <div class="flex flex-col">
-            <MultiSelect
-              id="dateFilter"
-              v-model="selectedDates"
-              :options="availableDates"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Choisir des années"
-              display="chip"
-              class="w-64 !bg-white"
-            />
-          </div>
-        </div>
       </div>
     </template>
 
-    <!-- Contenu -->
-    <div class="flex items-center justify-center min-h-[350px]">
+    <!-- 📊 CONTENU -->
+    <div class="flex flex-col items-center justify-center min-h-[400px] w-full">
+      <div v-if="loading" class="text-gray-500 italic">Chargement...</div>
+
       <component
-        v-if="currentChartComponent && chartData"
+        v-else-if="currentChartComponent && chartData"
         :is="currentChartComponent"
         :data="chartData"
       />
+
       <p v-else class="text-gray-500 italic">Aucune donnée disponible</p>
     </div>
 
-    <!-- Footer -->
+    <!-- 🔚 FOOTER -->
     <template #footer>
-      <div class="flex justify-end">
-        <button
-          class="px-4 py-2 rounded-md bg-slate-700 text-white hover:bg-slate-800 transition"
-          @click="handleHide"
-        >
-          Fermer
-        </button>
+      <div class="w-full flex gap-4 justify-between pt-4 border-t border-slate-200">
+        <div class="border-t border-slate-200 my-4"></div>
+        <!-- 🎚️ Filtres -->
+        <div class="flex flex-wrap justify-center gap-4">
+          <!-- 🔹 Filtres dynamiques -->
+          <MultiSelect
+            v-if="props.selectedWidget?.filters?.includes('year')"
+            v-model="selectedYears"
+            :options="availableYears"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Choisir des années"
+            display="chip"
+            class="w-64 !bg-white"
+          />
+          <MultiSelect
+            v-if="props.selectedWidget?.filters?.includes('region')"
+            v-model="selectedRegions"
+            :options="availableRegions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Filtrer par région"
+            display="chip"
+            class="w-80 !bg-white"
+          />
+        </div>
+        <div class="flex justify-end items-center">
+          <button
+            class="px-4 py-2 rounded-md bg-slate-700 text-white hover:bg-slate-800 transition h-[2.5rem] flex items-center justify-center"
+            @click="handleHide"
+          >
+            Fermer
+          </button>
+        </div>
       </div>
     </template>
   </Dialog>

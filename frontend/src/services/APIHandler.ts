@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const baseDomain = "http://backend:5000";
+const baseDomain = "http://localhost:8000";
 const baseURL = `${baseDomain}/api/`;
 const APIHandler = axios.create({
     baseURL,
