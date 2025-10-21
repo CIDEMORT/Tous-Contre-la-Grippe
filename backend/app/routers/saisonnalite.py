@@ -17,13 +17,11 @@ async def get_donnees_meteo(
     db: Session = Depends(get_db),
     nom_usuel: Optional[str] = Query(None, description="Station météo"),
     annee: Optional[int] = Query(None, description="Année"),
-    mois: Optional[int] = Query(None, description="Mois (1-12)"),
-    limit: int = Query(100, ge=1, le=1000)
+    mois: Optional[int] = Query(None, description="Mois (1-12)")
+    # ← Plus de limit du tout !
 ):
     """
     Données météo + grippe pour analyse de la saisonnalité
-    
-    Graphique: Aires / Courbes multiples
     """
     from app.models.schemas import DonneesMeteo
     
@@ -36,7 +34,7 @@ async def get_donnees_meteo(
     if mois:
         query = query.filter(DonneesMeteo.mois == mois)
     
-    query = query.limit(limit)
+    # PAS de .limit() ici !
     results = query.all()
     
     data = []
