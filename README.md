@@ -209,30 +209,6 @@ Toutes les réponses incluent :
 }
 ```
 
-## 🚢 Déploiement sur Render
-
-### Option 1 : Avec requirements.txt
-```bash
-# Build Command
-pip install -r backend/requirements.txt
-
-# Start Command
-cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
-```
-
-### Option 2 : Installation manuelle (si requirements.txt échoue)
-```bash
-# Build Command
-pip install fastapi && pip install uvicorn[standard] && pip install sqlalchemy && pip install pandas && pip install python-multipart && pip install pydantic && pip install python-dotenv
-
-# Start Command
-cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
-```
-
-### Variables d'environnement sur Render
-```
-ENVIRONMENT=production
-```
 
 ## 🔍 Dépannage
 
@@ -255,14 +231,6 @@ Par défaut, toutes les données sont chargées. Vérifiez qu'il n'y a pas de pa
 - Santé Publique France : Couvertures vaccinales, passages aux urgences
 - Données météorologiques : Stations météo françaises
 
-## 👥 Auteurs
-
-Projet réalisé dans le cadre du Hackathon EPITECH 2025
-- **Thème** : Optimisation de la stratégie vaccinale contre la grippe
-
-## 📄 License
-
-Ce projet est sous licence MIT.
 
 ## 🎯 Objectifs du hackathon
 
@@ -272,5 +240,3 @@ Ce projet est sous licence MIT.
 ✅ Identifier les zones sous-vaccinées et proposer des stratégies ciblées
 
 ---
-
-**API développée avec ❤️ pour le Hackathon EPITECH 2025**
