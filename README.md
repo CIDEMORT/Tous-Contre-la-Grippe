@@ -18,7 +18,7 @@ Il s’appuie sur des **graphiques interactifs** et des **filtres dynamiques** i
 ---
  
 ## 🧱 Structure simplifiée
- 
+```
 frontend/
 ├── src/
 │ ├── components/
@@ -35,7 +35,8 @@ frontend/
 │ ├── App.vue
 │ └── main.ts
 └── package.json
- 
+```
+
 ## 📊 Fonctionnement
  
 Chaque widget correspond à une catégorie de statistiques :
