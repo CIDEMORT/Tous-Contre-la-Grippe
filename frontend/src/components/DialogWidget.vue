@@ -2,12 +2,10 @@
 import { ref, computed, watch } from 'vue'
 import API from '@/services/API'
 
-// 📊 Import des graphiques
 import BarChart from '@/components/Charts/BarChart.vue'
 import LineChart from '@/components/Charts/LineChart.vue'
 import PieChart from '@/components/Charts/PieChart.vue'
 
-// 🧩 PrimeVue
 import MultiSelect from 'primevue/multiselect'
 
 const props = defineProps<{
@@ -22,15 +20,9 @@ const props = defineProps<{
 const emit = defineEmits<(e: 'update:showDialog', value: boolean) => void>()
 const handleHide = () => emit('update:showDialog', false)
 
-/* -------------------------------
-🧠 États de données
----------------------------------*/
 const loading = ref(false)
 const apiData = ref<any | null>(null)
 
-/* -------------------------------
-🎚️ Filtres (dynamiques)
----------------------------------*/
 const availableYears = ref([
   { label: '2021', value: '2021' },
   { label: '2022', value: '2022' },
@@ -42,44 +34,46 @@ const selectedYears = ref(['2021', '2022', '2023', '2024'])
 const availableRegions = ref<{ label: string; value: string }[]>([])
 const selectedRegions = ref<string[]>([])
 
-/* -------------------------------
-🧩 Type de graphique par défaut
----------------------------------*/
 const chartMap: Record<string, any> = {
   'Évolution actes de vaccination contre la grippe de 2021 à 2024 par région': BarChart,
+  'Analyse de la saisonnalité - Corrélation température/grippe': LineChart,
 }
 
-/* -------------------------------
-🎨 Choix du graphique
----------------------------------*/
 const currentChartComponent = computed(() => {
   if (!props.selectedWidget) return null
   return chartMap[props.selectedWidget.label] || BarChart
 })
 
-/* -------------------------------
-📊 Données filtrées pour Chart.js
----------------------------------*/
 const chartData = computed(() => {
   if (!apiData.value) return null
+
+  const filters = props.selectedWidget?.filters?.filter(f => f && f.trim() !== '') || []
+  const hasFilters = filters.length > 0
   const chartjsData = apiData.value.chartjs.data
 
-  // 1️⃣ Filtrage par années
+  if (!hasFilters) {
+    return {
+      ...chartjsData,
+      labels: [...chartjsData.labels],
+      datasets: chartjsData.datasets.map((d: any) => ({ ...d, data: [...d.data] })),
+    }
+  }
+
   let filteredDatasets = chartjsData.datasets
-  if (props.selectedWidget?.filters?.includes('year')) {
+  let filteredLabels = chartjsData.labels
+
+  if (filters.includes('year')) {
     filteredDatasets = filteredDatasets.filter((d: any) =>
       selectedYears.value.includes(d.label)
     )
   }
 
-  // 2️⃣ Filtrage par régions
-  let filteredLabels = chartjsData.labels
-  if (props.selectedWidget?.filters?.includes('region') && selectedRegions.value.length > 0) {
+  if (filters.includes('region') && selectedRegions.value.length > 0) {
     const regionIndexes = filteredLabels
       .map((label: string, idx: number) =>
         selectedRegions.value.includes(label) ? idx : -1
       )
-      .filter((i: any) => i !== -1)
+      .filter((i: number) => i !== -1)
 
     filteredLabels = filteredLabels.filter((label: string) =>
       selectedRegions.value.includes(label)
@@ -97,29 +91,48 @@ const chartData = computed(() => {
   }
 })
 
-/* -------------------------------
-🚀 Chargement dynamique selon le widget
----------------------------------*/
+const getEvolutionActesRegion = async () => {
+  apiData.value = (await API.geographie.getEvolutionActesRegion()).data
+
+  availableRegions.value = apiData.value.chartjs.data.labels.map((label: string) => ({
+    label,
+    value: label,
+  }))
+  selectedRegions.value = availableRegions.value.map((r) => r.value)
+}
+
+const getDonneesMeteo = async () => {
+  apiData.value = (await API.saisonnalite.getDonneesMeteo()).data
+
+  availableRegions.value = apiData.value.chartjs.data.labels.map((label: string) => ({
+    label,
+    value: label,
+  }))
+  selectedRegions.value = availableRegions.value.map((r) => r.value)
+}
+
 async function loadWidgetData() {
   if (!props.selectedWidget) return
   loading.value = true
   apiData.value = null
 
   try {
-    // Exemple : gestion par titre + label
     switch (props.selectedWidget.title) {
       case 'géographie':
-        apiData.value = (await API.geographie.getEvolutionActesRegion()).data
-
-        // Initialise le filtre région
-        availableRegions.value = apiData.value.chartjs.data.labels.map((label: string) => ({
-          label,
-          value: label,
-        }))
-        selectedRegions.value = availableRegions.value.map((r) => r.value)
+        if (props.selectedWidget.label === 'Évolution actes de vaccination contre la grippe de 2021 à 2024 par région') {
+          await getEvolutionActesRegion()
+        }
         break
-
-      // Tu pourras ajouter ici d'autres "titles" comme "saisonalité" ou "logistique"
+      case 'saisonnalité':
+        if (props.selectedWidget.label === 'Analyse de la saisonnalité - Corrélation température/grippe') {
+          await getDonneesMeteo()
+        }
+        break
+      case 'logistique':
+        break
+      default:
+        apiData.value = null
+        break
     }
   } catch (err) {
     console.error('Erreur API:', err)
@@ -128,7 +141,6 @@ async function loadWidgetData() {
   }
 }
 
-// 🔁 Recharger à chaque changement de widget
 watch(() => props.selectedWidget, loadWidgetData, { immediate: true })
 </script>
 
@@ -142,7 +154,6 @@ watch(() => props.selectedWidget, loadWidgetData, { immediate: true })
     :style="{ width: '90%' }"
     class="!bg-white"
   >
-    <!-- 🧩 HEADER -->
     <template #header>
       <div class="flex flex-col gap-3 w-full">
         <h2 class="text-xl font-semibold text-center text-slate-800">
@@ -151,26 +162,23 @@ watch(() => props.selectedWidget, loadWidgetData, { immediate: true })
       </div>
     </template>
 
-    <!-- 📊 CONTENU -->
     <div class="flex flex-col items-center justify-center min-h-[400px] w-full">
       <div v-if="loading" class="text-gray-500 italic">Chargement...</div>
 
       <component
         v-else-if="currentChartComponent && chartData"
         :is="currentChartComponent"
+        :options="apiData?.chartjs?.options"
         :data="chartData"
       />
 
       <p v-else class="text-gray-500 italic">Aucune donnée disponible</p>
     </div>
 
-    <!-- 🔚 FOOTER -->
     <template #footer>
       <div class="w-full flex gap-4 justify-between pt-4 border-t border-slate-200">
         <div class="border-t border-slate-200 my-4"></div>
-        <!-- 🎚️ Filtres -->
         <div class="flex flex-wrap justify-center gap-4">
-          <!-- 🔹 Filtres dynamiques -->
           <MultiSelect
             v-if="props.selectedWidget?.filters?.includes('year')"
             v-model="selectedYears"
