@@ -57,13 +57,14 @@ class EvolutionActesRegion(Base):
     
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     region = Column(String(100), index=True)
-    actes_2021 = Column(Integer, name="Actes_2021")
-    actes_2022 = Column(Integer, name="Actes_2022")
-    actes_2023 = Column(Integer, name="Actes_2023")
-    actes_2024 = Column(Integer, name="Actes_2024")
-    evolution_pct = Column(Float, name="Evolution_%")
+    code = Column(Integer)
+    # Utiliser directement les noms avec majuscules comme dans le CSV
+    Actes_2021 = Column(Integer)
+    Actes_2022 = Column(Integer)
+    Actes_2023 = Column(Integer)
+    Actes_2024 = Column(Integer)
+    Evolution_pct = Column(Float, name="Evolution_%")
     created_at = Column(DateTime, default=datetime.utcnow)
-
 
 class EvolutionDosesRegion(Base):
     """Évolution doses de vaccination contre la grippe de 2021 à 2024 par région"""

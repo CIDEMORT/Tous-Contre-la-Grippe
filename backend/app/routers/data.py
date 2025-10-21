@@ -5,6 +5,8 @@ from app.constants import THEMATIQUES
 from app.config import get_settings
 from typing import Optional
 from sqlalchemy import text
+from app.models.response_models import AdminTablesResponse
+
 
 router = APIRouter()
 settings = get_settings()
@@ -103,7 +105,7 @@ async def get_available_filters(
     }
 
 
-@router.get("/admin/tables", tags=["Admin"])
+@router.get("/admin/tables", response_model=AdminTablesResponse, tags=["Admin"])
 async def list_tables(db: Session = Depends(get_db)):
     """
     Liste toutes les tables de la base de données (dev only)

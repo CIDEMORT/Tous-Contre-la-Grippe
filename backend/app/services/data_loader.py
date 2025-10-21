@@ -164,28 +164,162 @@ def load_all_csv_data():
     
     logger.info(f"📊 {len(csv_files)} fichiers CSV trouvés")
     
+    # Liste des tables qui ont déjà un modèle défini dans schemas.py
+    PREDEFINED_TABLES = [
+        "accessibilite_pharmacies",
+        "evolution_actes_age",
+        "evolution_doses_age",
+        "evolution_actes_region",
+        "evolution_doses_region",
+        "repartition_lieu_vaccination",
+        "actes_doses_region",
+        "nombre_pharmacies_periode",
+        "donnees_meteo"
+    ]
+    
     total_loaded = 0
     
     for csv_file in csv_files:
         try:
-            # Créer la table dynamiquement
-            result = create_table_from_csv(csv_file)
-            if result is None:
-                continue
+            table_name = clean_column_name(csv_file.stem)
+            
+            # Si la table a déjà un modèle défini, utiliser le chargement direct
+            if table_name in PREDEFINED_TABLES:
+                logger.info(f"📄 Chargement du CSV prédéfini: {csv_file.name} → {table_name}")
+                rows_loaded = load_predefined_csv(csv_file, table_name)
+                total_loaded += rows_loaded
+                logger.info(f"✅ {csv_file.name} → {rows_loaded} lignes chargées")
+            else:
+                # Sinon, créer la table dynamiquement (pour les CSV non prévus)
+                logger.info(f"📄 Analyse du fichier: {csv_file.name}")
+                result = create_table_from_csv(csv_file)
+                if result is None:
+                    continue
+                    
+                table_class, columns = result
                 
-            table_class, columns = result
-            
-            # Créer la table dans la DB
-            Base.metadata.create_all(bind=engine, tables=[table_class.__table__])
-            
-            # Charger les données
-            rows_loaded = load_csv_to_table(csv_file, table_class, columns)
-            total_loaded += rows_loaded
-            
-            logger.info(f"✅ {csv_file.name} → Table '{table_class.__tablename__}' créée et remplie")
+                # Créer la table dans la DB
+                Base.metadata.create_all(bind=engine, tables=[table_class.__table__])
+                
+                # Charger les données
+                rows_loaded = load_csv_to_table(csv_file, table_class, columns)
+                total_loaded += rows_loaded
+                
+                logger.info(f"✅ {csv_file.name} → Table '{table_class.__tablename__}' créée et remplie")
             
         except Exception as e:
             logger.error(f"❌ Erreur avec {csv_file.name}: {e}")
             continue
     
+
     logger.info(f"🎉 Chargement terminé ! {total_loaded} lignes totales chargées")
+
+def load_predefined_csv(csv_path: Path, table_name: str):
+    """
+    Charge un CSV dans une table qui a déjà un modèle SQLAlchemy défini
+    """
+    from app.models import schemas
+    from sqlalchemy import inspect
+    
+    # Mapping des noms de tables vers les classes de modèles
+    MODEL_MAPPING = {
+        "accessibilite_pharmacies": schemas.AccessibilitePharmacies,
+        "evolution_actes_age": schemas.EvolutionActesAge,
+        "evolution_doses_age": schemas.EvolutionDosesAge,
+        "evolution_actes_region": schemas.EvolutionActesRegion,
+        "evolution_doses_region": schemas.EvolutionDosesRegion,
+        "repartition_lieu_vaccination": schemas.RepartitionLieuVaccination,
+        "actes_doses_region": schemas.ActesDosesRegion,
+        "nombre_pharmacies_periode": schemas.NombrePharmaciesPeriode,
+        "donnees_meteo": schemas.DonneesMeteo,
+    }
+    
+    model_class = MODEL_MAPPING.get(table_name)
+    if not model_class:
+        logger.error(f"❌ Modèle introuvable pour la table: {table_name}")
+        return 0
+    
+    # Lire le CSV SANS modifier les noms de colonnes
+    try:
+        df = pd.read_csv(csv_path)
+    except Exception as e:
+        logger.error(f"❌ Erreur lecture du CSV: {e}")
+        return 0
+    
+    logger.info(f"📋 Colonnes du CSV: {list(df.columns)}")
+    
+    # Utiliser l'inspecteur pour avoir les VRAIS noms de colonnes dans la DB
+    inspector = inspect(engine)
+    db_columns = {}
+    for col in inspector.get_columns(table_name):
+        db_columns[col['name']] = col
+    
+    logger.info(f"📋 Colonnes dans la DB: {list(db_columns.keys())}")
+    
+    # Créer un mapping CSV → Attribut Python du modèle
+    csv_to_python_attr = {}
+    for csv_col in df.columns:
+        # Trouver l'attribut Python qui correspond à cette colonne CSV
+        for attr_name in dir(model_class):
+            if attr_name.startswith('_'):
+                continue
+            try:
+                attr = getattr(model_class, attr_name)
+                if hasattr(attr, 'expression'):
+                    # C'est une colonne SQLAlchemy
+                    col_name = attr.expression.name
+                    if col_name == csv_col:
+                        csv_to_python_attr[csv_col] = attr_name
+                        logger.info(f"  Mapping: CSV '{csv_col}' → Python '{attr_name}' → DB '{col_name}'")
+                        break
+            except:
+                continue
+    
+    # Convertir en dictionnaires
+    records = df.to_dict('records')
+    
+    # Insérer dans la DB
+    db = SessionLocal()
+    try:
+        # Vider la table d'abord
+        db.query(model_class).delete()
+        db.commit()
+        
+        # Insertion par batch
+        batch_size = 1000
+        total_inserted = 0
+        
+        for i in range(0, len(records), batch_size):
+            batch = records[i:i+batch_size]
+            
+            objects_to_insert = []
+            for record in batch:
+                obj = model_class()
+                
+                # Utiliser le mapping qu'on a créé
+                for csv_col, value in record.items():
+                    if csv_col in csv_to_python_attr:
+                        python_attr = csv_to_python_attr[csv_col]
+                        setattr(obj, python_attr, value)
+                    elif csv_col in db_columns:
+                        # Essai direct si la colonne existe dans la DB
+                        setattr(obj, csv_col, value)
+                
+                objects_to_insert.append(obj)
+            
+            db.add_all(objects_to_insert)
+            db.commit()
+            total_inserted += len(objects_to_insert)
+            logger.info(f"   ✅ {total_inserted}/{len(records)} lignes insérées")
+        
+        logger.info(f"✅ {total_inserted} lignes chargées avec succès dans {table_name}")
+        return total_inserted
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Erreur lors de l'insertion dans {table_name}: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return 0
+    finally:
+        db.close()

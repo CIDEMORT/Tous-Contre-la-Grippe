@@ -2,7 +2,15 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
-from typing import Optional, List, Dict, Any
+from typing import Optional
+from app.models.response_models import (
+    AccessibilitePharmaciesResponse,
+    EvolutionActesAgeResponse,
+    EvolutionActesRegionResponse,
+    EvolutionDosesAgeResponse,        # ← AJOUTER
+    EvolutionDosesRegionResponse,     # ← AJOUTER
+    RepartitionLieuVaccinationResponse # ← AJOUTER
+)
 
 router = APIRouter()
 
@@ -10,12 +18,13 @@ router = APIRouter()
 # GÉOGRAPHIE - Routes spécifiques
 # ============================================
 
-@router.get("/accessibilite-pharmacies")
+@router.get("/accessibilite-pharmacies", response_model=AccessibilitePharmaciesResponse)
 async def get_accessibilite_pharmacies(
     db: Session = Depends(get_db),
     code_postal: Optional[str] = Query(None, description="Filtrer par code postal"),
     limit: int = Query(100, ge=1, le=1000)
 ):
+    # ... ton code existant
     """
     Accessibilité des centres de vaccination (pharmacies uniquement) selon la population
     
@@ -75,7 +84,7 @@ async def get_accessibilite_pharmacies(
     }
 
 
-@router.get("/evolution-actes-age")
+@router.get("/evolution-actes-age", response_model=EvolutionActesAgeResponse)
 async def get_evolution_actes_age(
     db: Session = Depends(get_db),
     region: Optional[str] = Query(None, description="Filtrer par région")
@@ -173,7 +182,7 @@ async def get_evolution_actes_age(
     }
 
 
-@router.get("/evolution-doses-age")
+@router.get("/evolution-doses-age", response_model=EvolutionDosesAgeResponse)
 async def get_evolution_doses_age(
     db: Session = Depends(get_db),
     region: Optional[str] = Query(None, description="Filtrer par région")
@@ -264,7 +273,7 @@ async def get_evolution_doses_age(
     }
 
 
-@router.get("/evolution-actes-region")
+@router.get("/evolution-actes-region", response_model=EvolutionActesRegionResponse)
 async def get_evolution_actes_region(
     db: Session = Depends(get_db),
     region: Optional[str] = Query(None, description="Filtrer par région")
@@ -274,25 +283,27 @@ async def get_evolution_actes_region(
     
     Graphique: Graph batons (Bar chart)
     """
-    query = "SELECT * FROM evolution_actes_region WHERE 1=1"
+    from app.models.schemas import EvolutionActesRegion
+    
+    query = db.query(EvolutionActesRegion)
     
     if region:
-        query += f" AND region = '{region}'"
+        query = query.filter(EvolutionActesRegion.region.like(f"%{region}%"))
     
-    results = db.execute(text(query)).fetchall()
+    results = query.all()
     
     data = []
     for row in results:
         data.append({
-            "region": row[1],
-            "actes_2021": row[2],
-            "actes_2022": row[3],
-            "actes_2023": row[4],
-            "actes_2024": row[5],
-            "evolution_pct": row[6]
+            "region": row.region,
+            "actes_2021": row.Actes_2021,  # ← Majuscule !
+            "actes_2022": row.Actes_2022,  # ← Majuscule !
+            "actes_2023": row.Actes_2023,  # ← Majuscule !
+            "actes_2024": row.Actes_2024,  # ← Majuscule !
+            "evolution_pct": row.Evolution_pct  # ← Majuscule !
         })
     
-    # Format Chart.js (Grouped Bar chart)
+    # Le reste identique...
     chartjs_format = {
         "type": "bar",
         "data": {
@@ -344,8 +355,7 @@ async def get_evolution_actes_region(
         "chartjs": chartjs_format
     }
 
-
-@router.get("/evolution-doses-region")
+@router.get("/evolution-doses-region", response_model=EvolutionDosesRegionResponse)
 async def get_evolution_doses_region(
     db: Session = Depends(get_db),
     region: Optional[str] = Query(None, description="Filtrer par région")
@@ -426,7 +436,7 @@ async def get_evolution_doses_region(
     }
 
 
-@router.get("/repartition-lieu-vaccination")
+@router.get("/repartition-lieu-vaccination", response_model=RepartitionLieuVaccinationResponse)
 async def get_repartition_lieu_vaccination(
     db: Session = Depends(get_db),
     type_lieu: Optional[str] = Query(None, description="Filtrer par type de lieu"),
@@ -482,6 +492,28 @@ async def get_repartition_lieu_vaccination(
                 }
             }
         }
+    }
+@router.get("/debug-actes-region")
+async def debug_actes_region(db: Session = Depends(get_db)):
+    """Endpoint de debug pour voir les données brutes"""
+    from app.models.schemas import EvolutionActesRegion
+    
+    results = db.query(EvolutionActesRegion).all()
+    
+    debug_data = []
+    for row in results:
+        debug_data.append({
+            "region": row.region,
+            "has_Actes_2021_attr": hasattr(row, 'Actes_2021'),
+            "has_actes_2021_attr": hasattr(row, 'actes_2021'),
+            "all_attributes": [attr for attr in dir(row) if not attr.startswith('_')],
+            "try_Actes_2021": getattr(row, 'Actes_2021', 'NOT_FOUND'),
+            "try_actes_2021": getattr(row, 'actes_2021', 'NOT_FOUND'),
+        })
+    
+    return {
+        "total_rows": len(results),
+        "debug_data": debug_data[:3]  # Juste les 3 premières lignes
     }
     
     # TODO: Compter les occurrences par lieu et tranche d'âge

@@ -4,13 +4,18 @@ from sqlalchemy import text
 from app.database import get_db
 from typing import Optional
 
+from app.models.response_models import (
+    ActesDosesRegionResponse,
+    NombrePharmaciesPeriodeResponse
+)
+
 router = APIRouter()
 
 # ============================================
 # LOGISTIQUE - Routes spécifiques
 # ============================================
 
-@router.get("/actes-doses-region")
+@router.get("/actes-doses-region", response_model=ActesDosesRegionResponse)
 async def get_actes_doses_region(
     db: Session = Depends(get_db),
     region: Optional[str] = Query(None, description="Filtrer par région"),
@@ -95,7 +100,7 @@ async def get_actes_doses_region(
     }
 
 
-@router.get("/nombre-pharmacies-periode")
+@router.get("/nombre-pharmacies-periode", response_model=NombrePharmaciesPeriodeResponse)
 async def get_nombre_pharmacies_periode(
     db: Session = Depends(get_db),
     date_debut: Optional[str] = Query(None, description="Date de début (YYYY-MM-DD)"),

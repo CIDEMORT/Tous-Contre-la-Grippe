@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
 from typing import Optional
+from app.models.response_models import DonneesMeteoResponse
+
 
 router = APIRouter()
 
@@ -10,10 +12,10 @@ router = APIRouter()
 # SAISONNALITÉ - Routes spécifiques
 # ============================================
 
-@router.get("/donnees-meteo")
+@router.get("/donnees-meteo", response_model=DonneesMeteoResponse)
 async def get_donnees_meteo(
     db: Session = Depends(get_db),
-    nom_usuel: Optional[str] = Query(None, description="Filtrer par station/ville"),
+    nom_usuel: Optional[str] = Query(None),
     limit: int = Query(100, ge=1, le=1000)
 ):
     """
