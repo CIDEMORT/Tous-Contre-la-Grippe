@@ -1,3 +1,58 @@
+# 🖥️ Frontend — Tableau de bord de statistiques de santé publique
+ 
+Ce frontend permet de visualiser des **données officielles** liées à la santé publique en France, notamment sur la **vaccination contre la grippe** et la **corrélation entre température et incidence de la grippe**.  
+Il s’appuie sur des **graphiques interactifs** et des **filtres dynamiques** intégrés via Vue.js et PrimeVue.
+ 
+---
+ 
+## ⚙️ Technologies principales
+ 
+| Technologie | Description |
+|--------------|-------------|
+| 🧩 **Vue 3 (Composition API)** | Framework frontend principal |
+| 🎨 **PrimeVue** | Composants UI modernes (Dialog, MultiSelect, etc.) |
+| 📊 **Chart.js** | Rendu des graphiques (Bar, Line, Pie) |
+| 🧠 **TypeScript** | Typage fort et meilleure lisibilité du code |
+| 🔌 **API REST** | Récupération des données depuis le backend |
+ 
+---
+ 
+## 🧱 Structure simplifiée
+ 
+frontend/
+├── src/
+│ ├── components/
+│ │ ├── Charts/
+│ │ │ ├── BarChart.vue
+│ │ │ ├── LineChart.vue
+│ │ │ └── PieChart.vue
+│ │ ├── DialogWidget.vue
+│ │ └── Widget.vue
+│ ├── services/
+│ │ └── API.ts
+│ ├── views/
+│ │ └── Dashboard.vue
+│ ├── App.vue
+│ └── main.ts
+└── package.json
+ 
+## 📊 Fonctionnement
+ 
+Chaque widget correspond à une catégorie de statistiques :
+ 
+1. Géographie → Évolution des actes de vaccination par région
+ 
+2. Saisonnalité → Corrélation entre température et grippe
+ 
+3. Logistique → (à venir)
+ 
+### Lorsqu’un widget est cliqué :
+ 
+- Une fenêtre modale s’ouvre (DialogWidget.vue)
+- L’application charge les données depuis l’API correspondante
+- Les filtres (année, région, etc.) sont affichés dynamiquement selon le widget
+- Le graphique est rendu à l’aide du composant adapté (BarChart, LineChart, PieChart, ...)
+
 # 🏥 Flu Vaccination Data API
 
 API FastAPI pour l'analyse des données de vaccination contre la grippe en France - Hackathon EPITECH 2025
