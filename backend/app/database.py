@@ -8,16 +8,16 @@ settings = get_settings()
 # Créer le moteur SQLite
 engine = create_engine(
     settings.database_url,
-    connect_args={"check_same_thread": False}  # Nécessaire pour SQLite
+    connect_args={"check_same_thread": False}
 )
 
 # Optimisations SQLite
 @event.listens_for(engine, "connect")
-def set_sqlite_pragma(dbapi_conn, connection_record):  # ← CORRIGÉ : 2 paramètres !
+def set_sqlite_pragma(dbapi_conn, connection_record):
     cursor = dbapi_conn.cursor()
     cursor.execute("PRAGMA journal_mode=WAL")
     cursor.execute("PRAGMA synchronous=NORMAL")
-    cursor.execute("PRAGMA cache_size=-64000")  # 64MB
+    cursor.execute("PRAGMA cache_size=-64000")
     cursor.close()
 
 # Session locale
@@ -33,3 +33,14 @@ def get_db():
         yield db
     finally:
         db.close()
+
+# ============================================
+# IMPORTANT : Importer les modèles ici pour que SQLAlchemy les trouve
+# ============================================
+def import_models():
+    """Import tous les modèles pour que SQLAlchemy puisse créer les tables"""
+    from app.models import schemas  # noqa: F401
+    # Le noqa: F401 dit à Python "oui, cet import est volontaire même s'il n'est pas utilisé"
+
+# Importer dès que ce fichier est chargé
+import_models()

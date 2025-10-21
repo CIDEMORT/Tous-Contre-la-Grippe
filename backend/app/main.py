@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from app.config import get_settings
 from app.database import engine, Base
 from app.services.data_loader import load_all_csv_data
-from app.routers import data
+from app.routers import data, geographie, logistique, saisonnalite
 import logging
 
 logging.basicConfig(
@@ -35,13 +35,18 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS - Configuration permissive pour le hackathon
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Accepte tous les origins (hackathon only!)
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(data.router, prefix="/api", tags=["Données"])
+# Routes génériques
+app.include_router(data.router, prefix="/api", tags=["Données génériques"])
+
+# Routes spécifiques par thématique
+app.include_router(geographie.router, prefix="/api/geographie", tags=["Géographie"])
+app.include_router(logistique.router, prefix="/api/logistique", tags=["Logistique"])
+app.include_router(saisonnalite.router, prefix="/api/saisonnalite", tags=["Saisonnalité"])
