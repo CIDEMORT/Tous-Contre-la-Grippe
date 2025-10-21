@@ -241,7 +241,9 @@ def load_predefined_csv(csv_path: Path, table_name: str):
     
     # Lire le CSV SANS modifier les noms de colonnes
     try:
-        df = pd.read_csv(csv_path)
+        df = pd.read_csv(csv_path, sep=None, engine='python')
+        df.columns = df.columns.str.replace('\ufeff', '', regex=False)
+
     except Exception as e:
         logger.error(f"❌ Erreur lecture du CSV: {e}")
         return 0

@@ -121,15 +121,16 @@ class NombrePharmaciesPeriode(Base):
 # ============================================
 
 class DonneesMeteo(Base):
-    """Données météo pour analyse saisonnalité"""
+    """Données météo pour analyse saisonnalité + grippe"""
     __tablename__ = "donnees_meteo"
     
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    nom_usuel = Column(String(200))  # Nom de la station/ville
-    temp_min_sous_abri = Column(Float)
-    temp_max_sous_abri = Column(Float)
-    moy_quotidienne_sous_abri = Column(Float)
-    temp_quotidienne_min_au_dessus_du_sol = Column(Float)
-    temp_moy_mensuelle = Column(Float)
-    temp_moy_saison = Column(Float)
+    NOM_USUEL = Column(String(200), index=True)  # ← Majuscules pour matcher le CSV
+    TNTXM = Column(Float)
+    TNSOL = Column(Float)
+    TMM = Column(Float)
+    annees = Column(Integer, index=True)
+    mois = Column(Integer, index=True)
+    taux_grippe = Column(Float)
+    incidence_sg_hebdo = Column(Float)
     created_at = Column(DateTime, default=datetime.utcnow)

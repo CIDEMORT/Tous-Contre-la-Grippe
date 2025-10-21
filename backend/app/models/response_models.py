@@ -86,12 +86,14 @@ class EvolutionActesRegionResponse(BaseModel):
     chartjs: ChartJSFormat
 
 class DonneesMeteoData(BaseModel):
-    nom_usuel: str
-    temp_min_sous_abri: Optional[float] = None
-    temp_max_sous_abri: Optional[float] = None
-    moy_quotidienne_sous_abri: Optional[float] = None
-    temp_moy_mensuelle: Optional[float] = None
-    temp_moy_saison: Optional[float] = None
+    NOM_USUEL: str
+    TNTXM: Optional[float] = None
+    TNSOL: Optional[float] = None
+    TMM: Optional[float] = None
+    annees: Optional[int] = None
+    mois: Optional[int] = None
+    taux_grippe: Optional[float] = None
+    incidence_sg_hebdo: Optional[float] = None
 
 class DonneesMeteoResponse(BaseModel):
     question: str
@@ -99,7 +101,7 @@ class DonneesMeteoResponse(BaseModel):
     data: List[DonneesMeteoData]
     total: int
     chartjs: ChartJSFormat
-
+    
 # ============================================
 # Admin
 # ============================================
